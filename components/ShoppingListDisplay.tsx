@@ -18,37 +18,33 @@ export default function ShoppingListDisplay({ items, onItemsChange }: ShoppingLi
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-          Shopping List ({items.length})
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-sm font-semibold text-gray-700">
+          {items.length} {items.length === 1 ? 'item' : 'items'}
         </h2>
         <button
           onClick={handleAdd}
-          className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium text-sm"
+          className="text-[#00A862] hover:text-[#009954] font-medium text-sm"
         >
-          + Add Item
+          + Add
         </button>
       </div>
 
-      {items.length === 0 ? (
-        <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-          No items in your list yet
-        </p>
-      ) : (
-        <ul className="space-y-2">
+      {items.length === 0 ? null : (
+        <ul className="space-y-1.5">
           {items.map((item, index) => (
             <li
               key={index}
-              className="flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 hover:bg-gray-100 transition-colors"
             >
-              <span className="text-gray-900 dark:text-white flex-1">{item}</span>
+              <span className="text-gray-900 text-sm flex-1">{item}</span>
               <button
                 onClick={() => handleRemove(index)}
-                className="text-red-500 hover:text-red-600 ml-3"
+                className="text-gray-400 hover:text-red-500 ml-2 p-1"
                 aria-label={`Remove ${item}`}
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

@@ -1,27 +1,31 @@
 'use client';
 
 import { useState } from 'react';
-import InputSelector from '@/components/InputSelector';
-import PreferencesPanel from '@/components/PreferencesPanel';
+import ChatInput from '@/components/ChatInput';
 import ShoppingListDisplay from '@/components/ShoppingListDisplay';
 import InstacartLink from '@/components/InstacartLink';
 
 export default function Home() {
   const [shoppingList, setShoppingList] = useState<string[]>([]);
   const [preferences, setPreferences] = useState({
-    store: '',
     zipCode: '',
   });
   const [instacartLink, setInstacartLink] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showPreferences, setShowPreferences] = useState(false);
 
   const handleListGenerated = (items: string[]) => {
     setShoppingList(items);
+    setShowPreferences(true);
   };
 
-  const handleGenerateLink = async () => {
+  const handleBuild = async () => {
     if (shoppingList.length === 0) {
-      alert('Please add items to your shopping list first');
+      return;
+    }
+
+    if (!preferences.zipCode) {
+      alert('Please enter your ZIP code');
       return;
     }
 
@@ -53,62 +57,65 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-3">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-green-50">
+      <div className="container mx-auto px-4 py-8 max-w-2xl">
+        {/* Minimal Header */}
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-[#00A862] mb-2">
             QuikCart
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300">
-            Transform your shopping list into an Instacart cart
-          </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Input Methods */}
-          <div className="lg:col-span-2 space-y-6">
-            <InputSelector onListGenerated={handleListGenerated} />
-            
-            {shoppingList.length > 0 && (
+        {/* Chat Window */}
+        <div className="bg-white rounded-3xl shadow-lg border border-gray-100 p-6">
+          <ChatInput onListGenerated={handleListGenerated} />
+
+          {/* Shopping List Display */}
+          {shoppingList.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
               <ShoppingListDisplay 
                 items={shoppingList} 
                 onItemsChange={setShoppingList}
               />
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Right Column - Preferences & Link */}
-          <div className="space-y-6">
-            <PreferencesPanel 
-              preferences={preferences}
-              onPreferencesChange={setPreferences}
-            />
-
-            {shoppingList.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-                <button
-                  onClick={handleGenerateLink}
-                  disabled={isProcessing || !preferences.zipCode}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
-                >
-                  {isProcessing ? 'Generating Link...' : 'Generate Instacart Link'}
-                </button>
-                {!preferences.zipCode && (
-                  <p className="text-sm text-gray-500 mt-2 text-center">
-                    Please enter your ZIP code to generate a link
-                  </p>
-                )}
+          {/* Preferences & Build Section */}
+          {showPreferences && (
+            <div className="mt-6 pt-6 border-t border-gray-100 space-y-4">
+              <div>
+                <label htmlFor="zip-code" className="block text-sm font-medium text-gray-700 mb-2">
+                  ZIP Code
+                </label>
+                <input
+                  id="zip-code"
+                  type="text"
+                  value={preferences.zipCode}
+                  onChange={(e) => setPreferences({ ...preferences, zipCode: e.target.value })}
+                  placeholder="Enter your ZIP code"
+                  maxLength={5}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00A862] focus:border-transparent outline-none transition-all"
+                />
               </div>
-            )}
 
-            {instacartLink && (
+              <button
+                onClick={handleBuild}
+                disabled={isProcessing || !preferences.zipCode || shoppingList.length === 0}
+                className="w-full bg-[#00A862] hover:bg-[#009954] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-6 rounded-xl transition-colors"
+              >
+                {isProcessing ? 'Building Your Cart...' : 'Build Cart'}
+              </button>
+            </div>
+          )}
+
+          {/* Instacart Link */}
+          {instacartLink && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
               <InstacartLink link={instacartLink} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
-
