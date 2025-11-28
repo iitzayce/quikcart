@@ -18,17 +18,11 @@ export async function GET(request: NextRequest) {
   const apiBaseUrl = 'https://api.instacart.com';
   const endpoint = '/idp/v1/products/products_link';
   
-  // Handle API key format
-  let apiKey = INSTACART_API_KEY.trim();
-  let authHeader = `Bearer ${apiKey}`;
-  
-  // If it starts with "keys.", try both formats
-  if (apiKey.startsWith('keys.')) {
-    authHeader = `Bearer ${apiKey}`; // Try with prefix
-  }
+  // Use API key as provided (with "keys." prefix)
+  const apiKey = INSTACART_API_KEY.trim();
 
   const headers: HeadersInit = {
-    'Authorization': authHeader,
+    'Authorization': `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   };
@@ -40,7 +34,7 @@ export async function GET(request: NextRequest) {
   try {
     console.log('Testing Instacart API:', {
       endpoint: `${apiBaseUrl}${endpoint}`,
-      authHeaderPrefix: authHeader.substring(0, 20) + '...',
+      authHeaderPrefix: `Bearer ${apiKey.substring(0, 15)}...`,
       requestBody,
     });
 
@@ -65,6 +59,11 @@ export async function GET(request: NextRequest) {
       response: responseData,
       endpoint: `${apiBaseUrl}${endpoint}`,
       requestBody,
+      requestHeaders: {
+        Authorization: `Bearer ${apiKey.substring(0, 20)}...`,
+        'Content-Type': headers['Content-Type'],
+        'Accept': headers['Accept'],
+      },
     });
   } catch (error) {
     return NextResponse.json({
