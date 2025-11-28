@@ -1,11 +1,15 @@
 'use client';
 
+import { useState } from 'react';
+
 interface ShoppingListDisplayProps {
   items: string[];
   onItemsChange: (items: string[]) => void;
 }
 
 export default function ShoppingListDisplay({ items, onItemsChange }: ShoppingListDisplayProps) {
+  const [isEnhancing, setIsEnhancing] = useState(false);
+
   const handleRemove = (index: number) => {
     onItemsChange(items.filter((_, i) => i !== index));
   };
@@ -17,18 +21,63 @@ export default function ShoppingListDisplay({ items, onItemsChange }: ShoppingLi
     }
   };
 
+  const handleEnhance = async () => {
+    setIsEnhancing(true);
+    try {
+      const response = await fetch('/api/enhance-list', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const data = await response.json();
+      if (data.items && Array.isArray(data.items)) {
+        onItemsChange(data.items);
+      }
+    } catch (error) {
+      console.error('Error enhancing list:', error);
+      alert('Failed to enhance list. Using original items.');
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
           Shopping List ({items.length})
         </h2>
-        <button
-          onClick={handleAdd}
-          className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium text-sm"
-        >
-          + Add Item
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleEnhance}
+            disabled={isEnhancing}
+            className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            title="Enhance list with AI to normalize and improve item names"
+          >
+            {isEnhancing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Enhancing...
+              </>
+            ) : (
+              <>
+                ✨ Enhance with AI
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleAdd}
+            className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium text-sm"
+          >
+            + Add Item
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
