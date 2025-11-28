@@ -72,36 +72,45 @@ export async function POST(request: NextRequest) {
 
     let instacartLink: string | null = null;
 
+    let apiError: string | null = null;
+
     if (INSTACART_API_KEY) {
-      // Use the Instacart API utility with LineItems
-      instacartLink = await generateShoppableLink(
-        {
-          items: lineItems,
-          zipCode: preferences.zipCode,
-        },
-        {
-          apiKey: INSTACART_API_KEY,
-          partnerId: INSTACART_PARTNER_ID,
-        }
-      );
+      try {
+        // Use the Instacart API utility with LineItems
+        instacartLink = await generateShoppableLink(
+          {
+            items: lineItems,
+            zipCode: preferences.zipCode,
+          },
+          {
+            apiKey: INSTACART_API_KEY,
+            partnerId: INSTACART_PARTNER_ID,
+          }
+        );
+      } catch (error) {
+        console.error('Error generating Instacart link:', error);
+        apiError = error instanceof Error ? error.message : String(error);
+      }
+    } else {
+      apiError = 'INSTACART_API_KEY not configured';
     }
 
-    // Fallback to basic link if API is not configured or call fails
+    // If API call failed, return error details instead of fallback
     if (!instacartLink) {
-      if (process.env.NODE_ENV === 'development') {
-        // In development, return a fallback link for testing
-        instacartLink = generateFallbackLink({
-          items: lineItems,
-          zipCode: preferences.zipCode,
-        });
-      } else {
-        return NextResponse.json(
-          { 
-            error: 'Instacart API not configured. Please set INSTACART_API_KEY environment variable.',
-          },
-          { status: 500 }
-        );
-      }
+      return NextResponse.json(
+        { 
+          error: 'Failed to generate Instacart link',
+          details: apiError || 'Unknown error',
+          fallbackLink: process.env.NODE_ENV === 'development' 
+            ? generateFallbackLink({
+                items: lineItems,
+                zipCode: preferences.zipCode,
+              })
+            : null,
+          note: 'The Instacart API call failed. Check server logs for details.',
+        },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ link: instacartLink });

@@ -51,16 +51,37 @@ export async function generateShoppableLink(
     const apiBaseUrl = 'https://api.instacart.com';
     const endpoint = '/idp/v1/products/products_link';
     
+    // Handle API key format - try multiple formats
+    let apiKey = config.apiKey.trim();
+    let authHeader: string;
+    
+    // If key starts with "keys.", it might be a key ID or need special handling
+    if (apiKey.startsWith('keys.')) {
+      // Try with the full key as-is first
+      authHeader = `Bearer ${apiKey}`;
+      // Also try without the prefix as fallback
+      // const apiKeyWithoutPrefix = apiKey.substring(5);
+    } else {
+      authHeader = `Bearer ${apiKey}`;
+    }
+    
     // Prepare request headers
     const headers: HeadersInit = {
-      'Authorization': `Bearer ${config.apiKey}`,
+      'Authorization': authHeader,
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
     };
 
     // Add Partner ID header if provided (some API versions require it)
     if (config.partnerId) {
       headers['X-Partner-Id'] = config.partnerId;
     }
+    
+    console.log('Calling Instacart API:', {
+      endpoint: `${apiBaseUrl}${endpoint}`,
+      itemsCount: params.items.length,
+      hasZipCode: !!params.zipCode,
+    });
 
     // Prepare request body with LineItems
     const requestBody = {
@@ -89,19 +110,34 @@ export async function generateShoppableLink(
       } catch {
         errorData = { message: errorText || `HTTP ${response.status}` };
       }
-      console.error('Instacart API error:', {
+      
+      const errorDetails = {
         status: response.status,
         statusText: response.statusText,
         error: errorData,
-      });
-      return null;
+        endpoint: `${apiBaseUrl}${endpoint}`,
+        requestBody: requestBody,
+      };
+      
+      console.error('Instacart API error:', errorDetails);
+      
+      // Throw error with details for better debugging
+      throw new Error(`Instacart API error: ${response.status} - ${JSON.stringify(errorDetails)}`);
     }
 
     const data = await response.json();
+    console.log('Instacart API response:', data);
     
     // Response should contain a URL to the shopping list page
     // Common response fields: url, link, shopping_list_url, etc.
-    return data.url || data.link || data.shopping_list_url || data.shoppable_link || null;
+    const link = data.url || data.link || data.shopping_list_url || data.shoppable_link || data.data?.url || null;
+    
+    if (!link) {
+      console.error('No link found in Instacart API response:', data);
+      throw new Error('No shoppable link in API response');
+    }
+    
+    return link;
   } catch (error) {
     console.error('Error calling Instacart API:', error);
     return null;
