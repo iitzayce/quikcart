@@ -88,11 +88,17 @@ The app will automatically deploy on every push to your main branch.
 ### Instacart API
 
 1. Sign up for an Instacart Developer account at [https://developer.instacart.com/](https://developer.instacart.com/)
-2. Create a new application
-3. Copy your API Key and Partner ID
-4. Add them to your `.env.local` file
+2. Request development access to the Instacart Developer Platform
+3. Create a new application and generate your API Key
+4. Add your API Key to your `.env.local` file
 
-**Note**: The Instacart API integration is currently a placeholder. You'll need to implement the actual API calls based on Instacart's latest documentation. Check their API docs for the correct endpoints and request formats.
+**API Integration**:
+- The app uses the Instacart Developer Platform API endpoint: `POST /idp/v1/products/products_link`
+- AI automatically converts user input (text/image/audio) into the required `LineItem` format
+- Each LineItem includes: `name` (required), `quantity` (optional), `unit` (optional)
+- Documentation: [https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page/](https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page/)
+
+**Note**: Partner ID may be optional depending on your API access level. The API Key is required.
 
 ### OpenAI API
 

@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { LineItem } from '@/lib/instacart';
 
 /**
  * AI-powered shopping list enhancement
  * Uses GPT to normalize, deduplicate, and improve item names for better Instacart matching
+ * Now returns LineItem format ready for Instacart API
  */
 export async function POST(request: NextRequest) {
   try {
@@ -18,20 +20,25 @@ export async function POST(request: NextRequest) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     if (!OPENAI_API_KEY) {
-      // If no API key, return items as-is
-      return NextResponse.json({ items });
+      // If no API key, convert to basic LineItems
+      const lineItems: LineItem[] = items.map(item => ({
+        name: typeof item === 'string' ? item.trim() : item.name || String(item),
+        quantity: 1,
+      }));
+      return NextResponse.json({ items: lineItems.map(li => li.name) });
     }
 
-    // Use GPT to enhance the shopping list
-    const prompt = `Normalize and enhance this shopping list for grocery shopping. For each item:
-- Make it more specific and searchable (e.g., "milk" -> "Whole Milk", "chicken" -> "Chicken Breast")
+    // Use GPT to enhance the shopping list and convert to LineItem format
+    const prompt = `Normalize and enhance this shopping list for Instacart API. For each item:
+- Make product name more specific and searchable (e.g., "milk" -> "Whole Milk", "chicken" -> "Chicken Breast")
+- Extract quantity if mentioned (default to 1)
+- Extract unit if mentioned (e.g., "lb", "oz", "can")
 - Remove duplicates
-- Keep quantities if mentioned
-- Return as a JSON array
+- Return as JSON array of objects with name, quantity (optional), and unit (optional)
 
 Shopping list: ${JSON.stringify(items)}
 
-Return only a JSON array like: ["Item 1", "Item 2", "Item 3"]`;
+Return JSON array: [{"name": "Product", "quantity": 1, "unit": "optional"}]`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -86,16 +93,20 @@ Return only a JSON array like: ["Item 1", "Item 2", "Item 3"]`;
       const parsed = JSON.parse(jsonString);
       
       // Handle both direct arrays and objects with items property
-      const enhancedItems = Array.isArray(parsed) 
+      let enhancedArray = Array.isArray(parsed) 
         ? parsed 
-        : (parsed.items || parsed.enhanced || items);
+        : (parsed.items || parsed.enhanced || []);
       
-      if (Array.isArray(enhancedItems) && enhancedItems.length > 0) {
-        // Clean up the items
-        const cleaned = enhancedItems
-          .map(item => String(item).trim())
-          .filter(item => item.length > 0);
-        
+      // Convert to string array for backward compatibility with UI
+      const cleaned = enhancedArray
+        .map((item: any) => {
+          if (typeof item === 'string') return item.trim();
+          if (typeof item === 'object' && item.name) return String(item.name).trim();
+          return String(item).trim();
+        })
+        .filter((item: string) => item.length > 0);
+      
+      if (cleaned.length > 0) {
         return NextResponse.json({ items: cleaned });
       }
     } catch (parseError) {
