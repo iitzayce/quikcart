@@ -19,30 +19,44 @@ export async function POST(request: NextRequest) {
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
     if (!OPENAI_API_KEY) {
-      // If no API key, convert simple strings to basic LineItems
-      const lineItems: LineItem[] = items.map(item => ({
-        name: typeof item === 'string' ? item.trim() : item.name || String(item),
-        quantity: typeof item === 'object' && 'quantity' in item ? item.quantity : 1,
-      }));
+      // If no API key, convert simple strings to basic LineItems with required fields
+      const lineItems: LineItem[] = items.map(item => {
+        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+        const quantity = typeof item === 'object' && 'quantity' in item ? item.quantity : 1;
+        const unit = typeof item === 'object' && 'unit' in item ? item.unit : 'count';
+        return {
+          name,
+          quantity,
+          unit,
+          display_text: `${quantity} ${unit} ${name}`,
+        };
+      });
       return NextResponse.json({ lineItems });
     }
 
     // Use GPT to convert items into structured LineItem format for Instacart
-    const prompt = `Convert this shopping list into a structured format for Instacart API. 
-For each item, extract:
-1. Product name (normalized and searchable, e.g., "milk" -> "Whole Milk")
-2. Quantity (if mentioned, default to 1)
-3. Unit (if mentioned, e.g., "lb", "oz", "can", "pack", "loaf")
+    // All fields are required: name, quantity, unit, display_text
+    const prompt = `Convert this shopping list into Instacart LineItem format. For each item, extract:
+1. name: Normalized product name (e.g., "milk" -> "whole milk", "chicken" -> "chicken breast")
+2. quantity: Number (default to 1 if not specified)
+3. unit: Unit of measurement (common: "lb", "oz", "count", "can", "pack", "bunch", "loaf", "bottle", "box")
+4. display_text: Human-friendly format combining quantity, unit, and name (e.g., "1 pound chicken breast", "2 cans tomato soup")
+
+Valid units include: lb, oz, count, can, pack, bunch, loaf, bottle, box, bag, jar, carton, gallon, quart, pint, cup, fl oz, piece
 
 Input items: ${JSON.stringify(items)}
 
-Return a JSON array of objects with this exact structure:
+Return a JSON array with this exact structure (all fields required):
 [
-  { "name": "Product Name", "quantity": 1, "unit": "optional unit" },
-  ...
+  { 
+    "name": "product name", 
+    "quantity": 1, 
+    "unit": "unit", 
+    "display_text": "1 unit product name" 
+  }
 ]
 
-Only include quantity and unit fields if they were specified or can be inferred. Return ONLY the JSON array, no other text.`;
+Return ONLY the JSON array, no other text.`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -103,26 +117,25 @@ Only include quantity and unit fields if they were specified or can be inferred.
       const parsed = JSON.parse(jsonString);
       const lineItemsArray = Array.isArray(parsed) ? parsed : (parsed.lineItems || parsed.items || []);
 
-      // Validate and clean LineItems
+      // Validate and clean LineItems - all required fields must be present
       const lineItems: LineItem[] = lineItemsArray
         .filter((item: any) => item && (item.name || item.product))
         .map((item: any) => {
-          const lineItem: LineItem = {
-            name: String(item.name || item.product || '').trim(),
+          const name = String(item.name || item.product || '').trim();
+          const quantity = item.quantity !== undefined && item.quantity !== null 
+            ? Number(item.quantity) 
+            : 1;
+          const unit = (item.unit && typeof item.unit === 'string') 
+            ? item.unit.trim() 
+            : 'count';
+          const display_text = item.display_text || `${quantity} ${unit} ${name}`;
+          
+          return {
+            name,
+            quantity: isNaN(quantity) || quantity <= 0 ? 1 : quantity,
+            unit: unit || 'count',
+            display_text,
           };
-          
-          if (item.quantity !== undefined && item.quantity !== null) {
-            const qty = Number(item.quantity);
-            if (!isNaN(qty) && qty > 0) {
-              lineItem.quantity = qty;
-            }
-          }
-          
-          if (item.unit && typeof item.unit === 'string') {
-            lineItem.unit = item.unit.trim();
-          }
-          
-          return lineItem;
         })
         .filter((item: LineItem) => item.name.length > 0);
 
@@ -133,11 +146,16 @@ Only include quantity and unit fields if they were specified or can be inferred.
       console.error('Error parsing AI response:', parseError);
     }
 
-    // Final fallback: convert to basic LineItems
-    const lineItems: LineItem[] = items.map(item => ({
-      name: typeof item === 'string' ? item.trim() : item.name || String(item),
-      quantity: 1,
-    }));
+      // Final fallback: convert to basic LineItems with required fields
+    const lineItems: LineItem[] = items.map(item => {
+      const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+      return {
+        name,
+        quantity: 1,
+        unit: 'count',
+        display_text: `1 count ${name}`,
+      };
+    });
     
     return NextResponse.json({ lineItems });
   } catch (error) {

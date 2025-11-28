@@ -10,9 +10,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 400 });
   }
 
-  // Test with minimal request
+  // Test with minimal request - using proper LineItem format
   const testItems = [
-    { name: 'Milk', quantity: 1 }
+    { 
+      name: 'milk', 
+      quantity: 1, 
+      unit: 'gallon',
+      display_text: '1 gallon milk'
+    }
   ];
 
   const apiBaseUrl = 'https://api.instacart.com';
@@ -28,6 +33,7 @@ export async function GET(request: NextRequest) {
   };
 
   const requestBody = {
+    title: 'Test Shopping List',
     line_items: testItems,
   };
 

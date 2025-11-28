@@ -43,18 +43,22 @@ export async function POST(request: NextRequest) {
           const processData = await processResponse.json();
           lineItems = processData.lineItems || [];
         } else {
-          // Fallback: convert strings to basic LineItems
+          // Fallback: convert strings to basic LineItems with required fields
           lineItems = (items as string[]).map(name => ({
             name: String(name).trim(),
             quantity: 1,
+            unit: 'count',
+            display_text: `1 count ${String(name).trim()}`,
           }));
         }
       } catch (processError) {
         console.error('Error processing items to LineItems:', processError);
-        // Fallback: convert strings to basic LineItems
+        // Fallback: convert strings to basic LineItems with required fields
         lineItems = (items as string[]).map(name => ({
           name: String(name).trim(),
           quantity: 1,
+          unit: 'count',
+          display_text: `1 count ${String(name).trim()}`,
         }));
       }
     }
@@ -80,6 +84,7 @@ export async function POST(request: NextRequest) {
         instacartLink = await generateShoppableLink(
           {
             items: lineItems,
+            title: 'My Shopping List',
             zipCode: preferences.zipCode,
           },
           {

@@ -18,18 +18,37 @@ export interface InstacartConfig {
  * Based on: https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page/
  */
 export interface LineItem {
-  name: string;
-  quantity?: number;
-  unit?: string; // e.g., "can", "lb", "oz", "pack"
+  name: string; // Required - Ingredient name
+  quantity: number; // Required - How much of the item
+  unit: string; // Required - Units (see valid units in Instacart docs)
+  display_text: string; // Required - Human-friendly format (e.g., "1 pound chicken breast")
+  product_ids?: number[]; // Optional - Specific Instacart product IDs
+  upcs?: string[]; // Optional - Product UPCs
   line_item_measurements?: Array<{
-    quantity?: number;
-    unit?: string;
+    quantity: number;
+    unit: string;
   }>;
+  filters?: {
+    brand_filters?: string[];
+    health_filters?: (
+      | "ORGANIC" | "GLUTEN_FREE" | "FAT_FREE" |
+      "VEGAN" | "KOSHER" | "SUGAR_FREE" | "LOW_FAT"
+    )[];
+  };
 }
 
 export interface GenerateLinkParams {
   items: LineItem[];
-  zipCode?: string; // Optional, may be handled by Instacart
+  title?: string; // Required - Title of the shopping list
+  image_url?: string; // Optional - Thumbnail image for the page
+  link_type?: "shopping_list" | "recipe"; // Optional - Default is "shopping_list"
+  expires_in?: number; // Optional - Days until link expires (max 365)
+  instructions?: string[]; // Optional - Displayed on landing page
+  landing_page_configuration?: {
+    partner_linkback_url?: string;
+    enable_pantry_items?: boolean;
+  };
+  zipCode?: string; // Optional - ZIP code for store selection
 }
 
 /**
@@ -73,18 +92,34 @@ export async function generateShoppableLink(
       authHeader: `Bearer ${apiKey.substring(0, 10)}...`,
     });
 
-    // Prepare request body with LineItems
-    const requestBody = {
+    // Prepare request body with proper format
+    const requestBody: any = {
+      title: params.title || "Shopping List", // Required
       line_items: params.items.map(item => ({
         name: item.name,
-        ...(item.quantity && { quantity: item.quantity }),
-        ...(item.unit && { unit: item.unit }),
-        ...(item.line_item_measurements && { 
+        quantity: item.quantity,
+        unit: item.unit,
+        display_text: item.display_text,
+        ...(item.product_ids && item.product_ids.length > 0 && { product_ids: item.product_ids }),
+        ...(item.upcs && item.upcs.length > 0 && { upcs: item.upcs }),
+        ...(item.line_item_measurements && item.line_item_measurements.length > 0 && { 
           line_item_measurements: item.line_item_measurements 
         }),
+        ...(item.filters && { filters: item.filters }),
       })),
-      ...(params.zipCode && { zip_code: params.zipCode }),
     };
+
+    // Add optional fields
+    if (params.image_url) requestBody.image_url = params.image_url;
+    if (params.link_type) requestBody.link_type = params.link_type;
+    if (params.expires_in) requestBody.expires_in = params.expires_in;
+    if (params.instructions && params.instructions.length > 0) {
+      requestBody.instructions = params.instructions;
+    }
+    if (params.landing_page_configuration) {
+      requestBody.landing_page_configuration = params.landing_page_configuration;
+    }
+    if (params.zipCode) requestBody.zip_code = params.zipCode;
 
     // Make the API request
     const response = await fetch(`${apiBaseUrl}${endpoint}`, {
