@@ -51,26 +51,32 @@ export async function generateShoppableLink(
     const apiBaseUrl = 'https://api.instacart.com';
     const endpoint = '/idp/v1/products/products_link';
     
-    // Handle API key format - try multiple formats
+    // Handle API key format - Instacart may use different auth methods
     let apiKey = config.apiKey.trim();
-    let authHeader: string;
     
-    // If key starts with "keys.", it might be a key ID or need special handling
-    if (apiKey.startsWith('keys.')) {
-      // Try with the full key as-is first
-      authHeader = `Bearer ${apiKey}`;
-      // Also try without the prefix as fallback
-      // const apiKeyWithoutPrefix = apiKey.substring(5);
-    } else {
-      authHeader = `Bearer ${apiKey}`;
-    }
-    
-    // Prepare request headers
+    // Prepare request headers - try different authentication methods
     const headers: HeadersInit = {
-      'Authorization': authHeader,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     };
+    
+    // If key starts with "keys.", it might need special handling
+    // Try multiple authentication methods:
+    if (apiKey.startsWith('keys.')) {
+      // Method 1: Try as Bearer token with full key
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      // Also try X-API-Key header as alternative
+      headers['X-API-Key'] = apiKey;
+      // And try without "keys." prefix
+      const keyWithoutPrefix = apiKey.substring(5);
+      if (keyWithoutPrefix) {
+        // Store for fallback retry
+        (headers as any).__fallbackKey = keyWithoutPrefix;
+      }
+    } else {
+      headers['Authorization'] = `Bearer ${apiKey}`;
+      headers['X-API-Key'] = apiKey;
+    }
 
     // Add Partner ID header if provided (some API versions require it)
     if (config.partnerId) {
@@ -96,11 +102,34 @@ export async function generateShoppableLink(
       ...(params.zipCode && { zip_code: params.zipCode }),
     };
 
-    const response = await fetch(`${apiBaseUrl}${endpoint}`, {
+    // Try different authentication approaches based on key format
+    let response: Response;
+    
+    // First, try with Bearer token
+    response = await fetch(`${apiBaseUrl}${endpoint}`, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
     });
+    
+    // If 403 and key starts with "keys.", try as query parameter
+    if (!response.ok && (response.status === 403 || response.status === 401) && apiKey.startsWith('keys.')) {
+      console.log('Trying API key as query parameter...');
+      const url = new URL(`${apiBaseUrl}${endpoint}`);
+      url.searchParams.set('api_key', apiKey);
+      url.searchParams.set('key', apiKey);
+      
+      // Remove Authorization header and try with query params
+      const queryHeaders = { ...headers };
+      delete queryHeaders['Authorization'];
+      delete queryHeaders['X-API-Key'];
+      
+      response = await fetch(url.toString(), {
+        method: 'POST',
+        headers: queryHeaders,
+        body: JSON.stringify(requestBody),
+      });
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
