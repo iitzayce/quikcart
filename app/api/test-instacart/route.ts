@@ -10,17 +10,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'API key not configured' }, { status: 400 });
   }
 
-  // Test with minimal request - using proper LineItem format
+  // Test with minimal request - only name is required per OpenAPI spec
   const testItems = [
     { 
-      name: 'milk', 
-      quantity: 1, 
-      unit: 'gallon',
-      display_text: '1 gallon milk'
+      name: 'milk' // Only required field
     }
   ];
 
-  const apiBaseUrl = 'https://api.instacart.com';
+  // Use correct base URL from OpenAPI spec
+  const apiBaseUrl = 'https://connect.dev.instacart.tools';
   const endpoint = '/idp/v1/products/products_link';
   
   // Use API key as provided (with "keys." prefix)

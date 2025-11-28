@@ -43,22 +43,16 @@ export async function POST(request: NextRequest) {
           const processData = await processResponse.json();
           lineItems = processData.lineItems || [];
         } else {
-          // Fallback: convert strings to basic LineItems with required fields
+          // Fallback: convert strings to basic LineItems (only name required)
           lineItems = (items as string[]).map(name => ({
             name: String(name).trim(),
-            quantity: 1,
-            unit: 'count',
-            display_text: `1 count ${String(name).trim()}`,
           }));
         }
       } catch (processError) {
         console.error('Error processing items to LineItems:', processError);
-        // Fallback: convert strings to basic LineItems with required fields
+        // Fallback: convert strings to basic LineItems (only name required)
         lineItems = (items as string[]).map(name => ({
           name: String(name).trim(),
-          quantity: 1,
-          unit: 'count',
-          display_text: `1 count ${String(name).trim()}`,
         }));
       }
     }

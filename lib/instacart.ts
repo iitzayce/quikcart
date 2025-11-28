@@ -15,18 +15,19 @@ export interface InstacartConfig {
 
 /**
  * LineItem format as required by Instacart API
- * Based on: https://docs.instacart.com/developer_platform_api/api/products/create_shopping_list_page/
+ * Based on OpenAPI spec: https://connect.dev.instacart.tools
+ * Only `name` is required - quantity defaults to 1, unit defaults to "each"
  */
 export interface LineItem {
   name: string; // Required - Ingredient name
-  quantity: number; // Required - How much of the item
-  unit: string; // Required - Units (see valid units in Instacart docs)
-  display_text: string; // Required - Human-friendly format (e.g., "1 pound chicken breast")
-  product_ids?: number[]; // Optional - Specific Instacart product IDs
-  upcs?: string[]; // Optional - Product UPCs
+  quantity?: number; // Optional - defaults to 1
+  unit?: string; // Optional - defaults to "each"
+  display_text?: string; // Optional - Human-friendly format
+  product_ids?: number[]; // Optional - Specific Instacart product IDs (mutually exclusive with upcs)
+  upcs?: string[]; // Optional - Product UPCs (mutually exclusive with product_ids)
   line_item_measurements?: Array<{
-    quantity: number;
-    unit: string;
+    quantity?: number;
+    unit?: string;
   }>;
   filters?: {
     brand_filters?: string[];
@@ -66,8 +67,9 @@ export async function generateShoppableLink(
 ): Promise<string | null> {
   try {
     // Instacart Developer Platform API endpoint
-    // Base URL: https://api.instacart.com
-    const apiBaseUrl = 'https://api.instacart.com';
+    // Base URL: https://connect.dev.instacart.tools (Development)
+    // Production URL may differ - check Instacart docs
+    const apiBaseUrl = 'https://connect.dev.instacart.tools';
     const endpoint = '/idp/v1/products/products_link';
     
     // Use the API key as provided - it includes the "keys." prefix
@@ -92,21 +94,27 @@ export async function generateShoppableLink(
       authHeader: `Bearer ${apiKey.substring(0, 10)}...`,
     });
 
-    // Prepare request body with proper format
+    // Prepare request body with proper format per OpenAPI spec
     const requestBody: any = {
       title: params.title || "Shopping List", // Required
-      line_items: params.items.map(item => ({
-        name: item.name,
-        quantity: item.quantity,
-        unit: item.unit,
-        display_text: item.display_text,
-        ...(item.product_ids && item.product_ids.length > 0 && { product_ids: item.product_ids }),
-        ...(item.upcs && item.upcs.length > 0 && { upcs: item.upcs }),
-        ...(item.line_item_measurements && item.line_item_measurements.length > 0 && { 
-          line_item_measurements: item.line_item_measurements 
-        }),
-        ...(item.filters && { filters: item.filters }),
-      })),
+      line_items: params.items.map(item => {
+        const lineItem: any = {
+          name: item.name, // Required
+        };
+        
+        // Only include optional fields if they exist
+        if (item.quantity !== undefined) lineItem.quantity = item.quantity;
+        if (item.unit) lineItem.unit = item.unit;
+        if (item.display_text) lineItem.display_text = item.display_text;
+        if (item.product_ids && item.product_ids.length > 0) lineItem.product_ids = item.product_ids;
+        if (item.upcs && item.upcs.length > 0) lineItem.upcs = item.upcs;
+        if (item.line_item_measurements && item.line_item_measurements.length > 0) {
+          lineItem.line_item_measurements = item.line_item_measurements;
+        }
+        if (item.filters) lineItem.filters = item.filters;
+        
+        return lineItem;
+      }),
     };
 
     // Add optional fields
@@ -154,9 +162,8 @@ export async function generateShoppableLink(
     const data = await response.json();
     console.log('Instacart API response:', data);
     
-    // Response should contain a URL to the shopping list page
-    // Common response fields: url, link, shopping_list_url, etc.
-    const link = data.url || data.link || data.shopping_list_url || data.shoppable_link || data.data?.url || null;
+    // Response contains products_link_url according to OpenAPI spec
+    const link = data.products_link_url || data.url || data.link || data.shopping_list_url || data.shoppable_link || null;
     
     if (!link) {
       console.error('No link found in Instacart API response:', data);
