@@ -84,11 +84,16 @@ Return ONLY the JSON array, no other text.`;
     if (!response.ok) {
       const error = await response.json().catch(() => ({ message: 'Unknown error' }));
       console.error('OpenAI API error:', error);
-      // Fallback to basic conversion
-      const lineItems: LineItem[] = items.map(item => ({
-        name: typeof item === 'string' ? item.trim() : item.name || String(item),
-        quantity: 1,
-      }));
+      // Fallback to basic conversion with all required fields
+      const lineItems: LineItem[] = items.map(item => {
+        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+        return {
+          name,
+          quantity: 1,
+          unit: 'count',
+          display_text: `1 count ${name}`,
+        };
+      });
       return NextResponse.json({ lineItems });
     }
 
@@ -96,11 +101,16 @@ Return ONLY the JSON array, no other text.`;
     const content = data.choices[0]?.message?.content?.trim();
 
     if (!content) {
-      // Fallback to basic conversion
-      const lineItems: LineItem[] = items.map(item => ({
-        name: typeof item === 'string' ? item.trim() : item.name || String(item),
-        quantity: 1,
-      }));
+      // Fallback to basic conversion with all required fields
+      const lineItems: LineItem[] = items.map(item => {
+        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+        return {
+          name,
+          quantity: 1,
+          unit: 'count',
+          display_text: `1 count ${name}`,
+        };
+      });
       return NextResponse.json({ lineItems });
     }
 
