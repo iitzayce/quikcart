@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: Convert items to LineItem format using AI if needed
+    // Step 1: Convert items to LineItem format (simple conversion - only 'name' is required per Instacart API)
     let lineItems: LineItem[];
     
     // Check if items are already in LineItem format
@@ -29,32 +29,21 @@ export async function POST(request: NextRequest) {
       // Already in LineItem format
       lineItems = items as LineItem[];
     } else {
-      // Need to convert from strings to LineItems using AI
-      try {
-        const processResponse = await fetch(`${request.nextUrl.origin}/api/process-to-line-items`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ items }),
-        });
-
-        if (processResponse.ok) {
-          const processData = await processResponse.json();
-          lineItems = processData.lineItems || [];
-        } else {
-          // Fallback: convert strings to basic LineItems (only name required)
-          lineItems = (items as string[]).map(name => ({
-            name: String(name).trim(),
-          }));
+      // Simple conversion: Instacart API only requires 'name' field
+      // Quantity defaults to 1, unit defaults to "each"
+      lineItems = (items as string[]).map(item => {
+        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+        const lineItem: LineItem = { name };
+        
+        // Preserve optional fields if they exist
+        if (typeof item === 'object') {
+          if ('quantity' in item) lineItem.quantity = item.quantity;
+          if ('unit' in item) lineItem.unit = item.unit;
+          if ('display_text' in item) lineItem.display_text = item.display_text;
         }
-      } catch (processError) {
-        console.error('Error processing items to LineItems:', processError);
-        // Fallback: convert strings to basic LineItems (only name required)
-        lineItems = (items as string[]).map(name => ({
-          name: String(name).trim(),
-        }));
-      }
+        
+        return lineItem;
+      });
     }
 
     if (lineItems.length === 0) {
