@@ -170,13 +170,22 @@ Return ONLY the JSON array, no other text.`;
     return NextResponse.json({ lineItems });
   } catch (error) {
     console.error('Error processing to line items:', error);
-    // Return basic conversion on error
-    const { items } = await request.json();
-    const lineItems: LineItem[] = (items || []).map((item: any) => ({
-      name: typeof item === 'string' ? item.trim() : item.name || String(item),
-      quantity: 1,
-    }));
-    return NextResponse.json({ lineItems });
+    // Return basic conversion on error with all required fields
+    try {
+      const { items: errorItems } = await request.json();
+      const lineItems: LineItem[] = (errorItems || []).map((item: any) => {
+        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+        return {
+          name,
+          quantity: 1,
+          unit: 'count',
+          display_text: `1 count ${name}`,
+        };
+      });
+      return NextResponse.json({ lineItems });
+    } catch {
+      return NextResponse.json({ error: 'Failed to process items' }, { status: 500 });
+    }
   }
 }
 
