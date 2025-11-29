@@ -140,28 +140,28 @@ export default function PreferencesSidebar({
             <h3 className="text-sm font-semibold text-gray-900 mb-3">Dietary Filters</h3>
             <div className="space-y-2">
               {[
-                'GLUTEN_FREE',
-                'LACTOSE_FREE',
-                'VEGAN',
-                'VEGETARIAN',
-                'PALEO',
+                { value: 'GLUTEN_FREE', label: 'Gluten-free' },
+                { value: 'LOW_FAT', label: 'Dairy-free / Lactose-free' },
+                { value: 'VEGAN', label: 'Vegan' },
+                { value: 'VEGAN', label: 'Vegetarian' }, // Note: Instacart uses VEGAN or we could omit
+                { value: 'SUGAR_FREE', label: 'Paleo / Whole30' },
               ].map((filter) => (
                 <label
                   key={filter}
                   className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                    preferences.dietaryFilters.includes(filter)
+                    preferences.dietaryFilters.includes(filter.value)
                       ? 'border-[#00A862] bg-green-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
                   <input
                     type="checkbox"
-                    checked={preferences.dietaryFilters.includes(filter)}
-                    onChange={() => toggleDietaryFilter(filter)}
+                    checked={preferences.dietaryFilters.includes(filter.value)}
+                    onChange={() => toggleDietaryFilter(filter.value)}
                     className="mr-3"
                   />
                   <span className="text-sm text-gray-900">
-                    {filter.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {filter.label}
                   </span>
                 </label>
               ))}
