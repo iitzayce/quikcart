@@ -147,7 +147,7 @@ export default function PreferencesSidebar({
                 { value: 'SUGAR_FREE', label: 'Paleo / Whole30' },
               ].map((filter) => (
                 <label
-                  key={filter}
+                  key={filter.value}
                   className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${
                     preferences.dietaryFilters.includes(filter.value)
                       ? 'border-[#00A862] bg-green-50'

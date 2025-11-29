@@ -59,10 +59,10 @@ export async function POST(request: NextRequest) {
     // Parse the transcribed text into items
     const items = transcribedText
       .split(/[,\n\r.]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
-      .map((item) => item.replace(/^[-•*]\s*/, '').trim())
-      .filter((item) => {
+      .map((item: string) => item.trim())
+      .filter((item: string) => item.length > 0)
+      .map((item: string) => item.replace(/^[-•*]\s*/, '').trim())
+      .filter((item: string) => {
         // Filter out common filler words and short items
         const lowerItem = item.toLowerCase();
         return !['and', 'or', 'the', 'a', 'an'].includes(lowerItem) && item.length > 1;

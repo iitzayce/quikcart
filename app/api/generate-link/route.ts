@@ -47,15 +47,32 @@ export async function POST(request: NextRequest) {
         ? userPrefs.mustHaveBrands.split(',').map(b => b.trim()).filter(Boolean)
         : [];
       
-      lineItems = (items as string[]).map(item => {
-        const name = typeof item === 'string' ? item.trim() : item.name || String(item);
+      lineItems = items.map((item) => {
+        // Handle both string and LineItem types
+        let name: string;
+        const itemObj = typeof item === 'string' ? null : (item as LineItem);
+        
+        if (typeof item === 'string') {
+          name = item.trim();
+        } else if (itemObj && 'name' in itemObj) {
+          name = itemObj.name || String(item);
+        } else {
+          name = String(item);
+        }
+        
         const lineItem: LineItem = { name };
         
-        // Preserve optional fields if they exist
-        if (typeof item === 'object') {
-          if ('quantity' in item) lineItem.quantity = item.quantity;
-          if ('unit' in item) lineItem.unit = item.unit;
-          if ('display_text' in item) lineItem.display_text = item.display_text;
+        // Preserve optional fields if they exist (only if item was already a LineItem)
+        if (itemObj && 'name' in itemObj) {
+          if (itemObj.quantity !== undefined) {
+            lineItem.quantity = itemObj.quantity;
+          }
+          if (itemObj.unit) {
+            lineItem.unit = itemObj.unit;
+          }
+          if (itemObj.display_text) {
+            lineItem.display_text = itemObj.display_text;
+          }
         }
         
         // Apply filters based on user preferences

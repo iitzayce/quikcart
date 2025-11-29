@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
     // Parse the extracted text into items
     const items = extractedText
       .split(/[,\n\r]+/)
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0)
-      .map((item) => item.replace(/^[-•*]\s*/, '').trim());
+      .map((item: string) => item.trim())
+      .filter((item: string) => item.length > 0)
+      .map((item: string) => item.replace(/^[-•*]\s*/, '').trim());
 
     if (items.length === 0) {
       return NextResponse.json(
