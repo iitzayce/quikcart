@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateShoppableLink, generateFallbackLink, LineItem } from '@/lib/instacart';
 
+interface UserPreferences {
+  shoppingStyle?: string;
+  brandPreference?: string;
+  mustHaveBrands?: string;
+  dietaryFilters?: string[];
+  organicImportance?: string;
+  packSize?: string;
+  substitutions?: string;
+}
+
 interface GenerateLinkRequest {
   items: string[] | LineItem[];
   preferences: {
     store?: string;
     zipCode?: string;
+    userPreferences?: UserPreferences;
   };
 }
 
@@ -31,6 +42,11 @@ export async function POST(request: NextRequest) {
     } else {
       // Simple conversion: Instacart API only requires 'name' field
       // Quantity defaults to 1, unit defaults to "each"
+      const userPrefs = preferences.userPreferences || {};
+      const brandFilters = userPrefs.mustHaveBrands 
+        ? userPrefs.mustHaveBrands.split(',').map(b => b.trim()).filter(Boolean)
+        : [];
+      
       lineItems = (items as string[]).map(item => {
         const name = typeof item === 'string' ? item.trim() : item.name || String(item);
         const lineItem: LineItem = { name };
@@ -40,6 +56,33 @@ export async function POST(request: NextRequest) {
           if ('quantity' in item) lineItem.quantity = item.quantity;
           if ('unit' in item) lineItem.unit = item.unit;
           if ('display_text' in item) lineItem.display_text = item.display_text;
+        }
+        
+        // Apply filters based on user preferences
+        const filters: any = {};
+        
+        // Brand filters
+        if (brandFilters.length > 0) {
+          filters.brand_filters = brandFilters;
+        }
+        
+        // Health/dietary filters
+        if (userPrefs.dietaryFilters && userPrefs.dietaryFilters.length > 0) {
+          filters.health_filters = userPrefs.dietaryFilters.map((f: string) => 
+            f.toUpperCase().replace(/\s+/g, '_')
+          );
+        }
+        
+        // Organic preference
+        if (userPrefs.organicImportance === 'always') {
+          if (!filters.health_filters) filters.health_filters = [];
+          if (!filters.health_filters.includes('ORGANIC')) {
+            filters.health_filters.push('ORGANIC');
+          }
+        }
+        
+        if (Object.keys(filters).length > 0) {
+          lineItem.filters = filters;
         }
         
         return lineItem;
@@ -64,11 +107,16 @@ export async function POST(request: NextRequest) {
     if (INSTACART_API_KEY) {
       try {
         // Use the Instacart API utility with LineItems
+        const userPrefs = preferences.userPreferences || {};
+        
         instacartLink = await generateShoppableLink(
           {
             items: lineItems,
             title: 'My Shopping List',
             zipCode: preferences.zipCode,
+            landing_page_configuration: {
+              enable_pantry_items: userPrefs.substitutions === 'auto',
+            },
           },
           {
             apiKey: INSTACART_API_KEY,
