@@ -143,7 +143,7 @@ export default function PreferencesSidebar({
                 { value: 'GLUTEN_FREE', label: 'Gluten-free' },
                 { value: 'LOW_FAT', label: 'Dairy-free / Lactose-free' },
                 { value: 'VEGAN', label: 'Vegan' },
-                { value: 'VEGAN', label: 'Vegetarian' }, // Note: Instacart uses VEGAN or we could omit
+                { value: 'VEGETARIAN', label: 'Vegetarian' }, // Note: Instacart API - using as is
                 { value: 'SUGAR_FREE', label: 'Paleo / Whole30' },
               ].map((filter) => (
                 <label
